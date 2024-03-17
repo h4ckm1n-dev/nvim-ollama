@@ -73,37 +73,10 @@ local function set_keymaps_for_decision(buf, new_code)
   vim.api.nvim_buf_set_keymap(buf, "n", "n", "", { noremap = true, silent = true, callback = close_window })
 end
 
--- Main function to interact with the API with interactive mode
+-- Main function to interact with the API
 function M.AskOllama()
   local code_snippet = get_visual_selection()
-  
-  -- Prompt the user for an action
-  local choice = vim.fn.input("Choose an action (1: Improve, 2: Debug, 3: Analyse, 4: Custom): ")
-  local action
-  local custom_prompt
-
-  -- Match the choice with the corresponding action
-  if choice == "1" then
-    action = "Improve"
-  elseif choice == "2" then
-    action = "Debug"
-  elseif choice == "3" then
-    action = "Analyse"
-  elseif choice == "4" then
-    custom_prompt = vim.fn.input("Enter your custom prompt: ")
-    action = "Custom"
-  else
-    print("Invalid choice. Cancelling operation.")
-    return
-  end
-
-  local prompt
-  if action == "Custom" and custom_prompt ~= "" then
-    prompt = custom_prompt .. " " .. code_snippet
-  else
-    prompt = action .. " this code: " .. code_snippet
-  end
-
+  local prompt = "Improve this code: " .. code_snippet
   local data = {
     model = "mixtral",
     prompt = prompt,
@@ -127,7 +100,7 @@ function M.AskOllama()
   })
 
   if code ~= 200 then
-    print("Failed to send request. Response code: ", code)
+    print("Failed to send debugging request. Response code: ", code)
     return
   end
 
@@ -136,3 +109,10 @@ function M.AskOllama()
   local buf = display_in_side_panel("API Response: " .. message .. "\nPress 'y' to replace, 'n' to cancel.")
   set_keymaps_for_decision(buf, message)
 end
+
+-- Setup function for lazy.nvim
+function M.setup()
+  vim.api.nvim_create_user_command("AskOllama", M.AskOllama, {})
+end
+
+return M
