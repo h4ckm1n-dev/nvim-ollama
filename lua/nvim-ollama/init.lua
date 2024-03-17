@@ -6,17 +6,6 @@ local ltn12 = require("ltn12")
 
 local API_URL = "http://127.0.0.1:11434/api/generate"
 
--- Variable to store user's choice
-local user_choice = ""
-
--- Possible choices
-local choices = {
-  improve = "Improve",
-  analyse = "Analyse",
-  debug = "Debug",
-  custom = "Custom"
-}
-
 -- Gets text from the current visual selection in Neovim
 local function get_visual_selection()
   local _, start_row, _, _ = unpack(vim.fn.getpos("'<"))
@@ -78,24 +67,16 @@ local function set_keymaps_for_decision(buf, new_code)
       vim.cmd("wincmd h")
       vim.api.nvim_buf_set_lines(0, 0, -1, false, vim.split(new_code, "\n"))
       close_window()
-      user_choice = "replace"
     end,
   })
 
-  vim.api.nvim_buf_set_keymap(buf, "n", "n", "", {
-    noremap = true,
-    silent = true,
-    callback = function()
-      close_window()
-      user_choice = "cancel"
-    end,
-  })
+  vim.api.nvim_buf_set_keymap(buf, "n", "n", "", { noremap = true, silent = true, callback = close_window })
 end
 
 -- Main function to interact with the API
-function M.AskOllama(choice)
+function M.AskOllama()
   local code_snippet = get_visual_selection()
-  local prompt = "Choice: " .. (type(choice) == "string" and choice or "Unknown") .. "\nCode Snippet: \n" .. code_snippet
+  local prompt = "Code Snippet:\n" .. code_snippet .. "\n\nImprove this code?"
   local data = {
     model = "mixtral",
     prompt = prompt,
@@ -115,7 +96,7 @@ function M.AskOllama(choice)
     headers = { ["Content-Type"] = "application/json" },
     source = ltn12.source.string(json.encode(data)),
     sink = ltn12.sink.table(response_body),
-    timeout = nil,
+    timeout = nil, 
   })
 
   if code ~= 200 then
@@ -128,3 +109,11 @@ function M.AskOllama(choice)
   local buf = display_in_side_panel("API Response: " .. message .. "\nPress 'y' to replace, 'n' to cancel.")
   set_keymaps_for_decision(buf, message)
 end
+
+
+-- Setup function for lazy.nvim
+function M.setup()
+  vim.api.nvim_create_user_command("AskOllama", M.AskOllama, {})
+end
+
+return M
