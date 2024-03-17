@@ -17,20 +17,37 @@ local function get_visual_selection()
   return table.concat(lines, "\n")
 end
 
--- Displays text in a split window on the left side
+-- Extracts the actual message from the API response
+local function extract_message(json_response)
+  local decoded, _, err = json.decode(json_response)
+  if err then
+    print("Error decoding JSON: ", err)
+    return "Error decoding response."
+  end
+  -- Assuming the message you want is in the 'response' field of the JSON
+  local message = decoded.response or "No response field found."
+  return message
+end
+
+-- Displays text in a split window on the right side taking 1/3 of the space
 local function display_in_side_panel(text)
-  -- Split the window vertically and move to the new window
+  -- Calculate width for the new window to take up 1/3 of the current Vim window
+  local total_width = vim.o.columns
+  local new_win_width = math.floor(total_width * 2 / 3)
+
+  -- Split the window and adjust its width
   vim.cmd("vsplit")
-  vim.cmd("wincmd h")
-  
-  -- Set up a new buffer for the response
+  vim.cmd("wincmd l")
+  vim.api.nvim_win_set_width(0, new_win_width)
+
+  -- Set up a new buffer for the extracted message
   local buf = vim.api.nvim_create_buf(false, true)
   vim.api.nvim_win_set_buf(0, buf)
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(text, "\n"))
 
   -- Set buffer properties
   vim.api.nvim_buf_set_option(buf, "bufhidden", "wipe")
-  
+
   return buf
 end
 
@@ -38,7 +55,7 @@ end
 local function set_keymaps_for_decision(buf, new_code)
   local function close_window()
     -- Close the current window and return to the original window
-    vim.cmd("wincmd l")
+    vim.cmd("wincmd h")
     vim.cmd("wincmd q")
   end
 
@@ -47,7 +64,7 @@ local function set_keymaps_for_decision(buf, new_code)
     silent = true,
     callback = function()
       -- Switch to the original window and replace the text
-      vim.cmd("wincmd l")
+      vim.cmd("wincmd h")
       vim.api.nvim_buf_set_lines(0, 0, -1, false, vim.split(new_code, "\n"))
       close_window()
     end,
@@ -88,8 +105,9 @@ function M.AskOllama()
   end
 
   local response = table.concat(response_body)
-  local buf = display_in_side_panel("API Response: " .. response .. "\nPress 'y' to replace, 'n' to cancel.")
-  set_keymaps_for_decision(buf, response)
+  local message = extract_message(response)
+  local buf = display_in_side_panel("API Response: " .. message .. "\nPress 'y' to replace, 'n' to cancel.")
+  set_keymaps_for_decision(buf, message)
 end
 
 -- Setup function for lazy.nvim
