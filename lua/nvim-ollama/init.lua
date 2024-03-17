@@ -61,7 +61,7 @@ function M.AskOllama()
   local code_snippet = get_visual_selection()
   
   -- Prompt the user for an action using a floating window
-  local choice_win, choice_buf = display_floating_prompt("Choose an action:", {"1: Improve", "2: Debug", "3: Analyse", "4: Custom"})
+  local choice_win, choice_buf = display_floating_prompt("Choose an action:\n" .. code_snippet, {"1: Improve", "2: Debug", "3: Analyse", "4: Custom"})
 
   local choice
 
@@ -133,10 +133,3 @@ function M.AskOllama()
 
   vim.api.nvim_win_close(choice_win, true)
 end
-
--- Setup function for lazy.nvim
-function M.setup()
-  vim.api.nvim_create_user_command("AskOllama", M.AskOllama, {})
-end
-
-return M
