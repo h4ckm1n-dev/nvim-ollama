@@ -77,6 +77,7 @@ function M.AskOllama()
     headers = { ["Content-Type"] = "application/json" },
     source = ltn12.source.string(json.encode(data)),
     sink = ltn12.sink.table(response_body),
+    timeout = nil, 
   })
 
   if code ~= 200 then
