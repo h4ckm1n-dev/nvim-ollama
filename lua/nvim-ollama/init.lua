@@ -53,7 +53,7 @@ local function display_floating_prompt(prompt_title, prompt_options)
   }
 
   local win = vim.api.nvim_open_win(buf, true, opts)
-  return win
+  return win, buf
 end
 
 -- Main function to interact with the API with interactive mode
@@ -61,12 +61,20 @@ function M.AskOllama()
   local code_snippet = get_visual_selection()
   
   -- Prompt the user for an action using a floating window
-  local choice_win = display_floating_prompt("Choose an action:", {"1: Improve", "2: Debug", "3: Analyse", "4: Custom"})
-  local choice = tonumber(vim.fn.input(""))
+  local choice_win, choice_buf = display_floating_prompt("Choose an action:", {"1: Improve", "2: Debug", "3: Analyse", "4: Custom"})
 
-  if not choice or choice < 1 or choice > 4 then
-    print("Invalid choice. Cancelling operation.")
-    return
+  local choice
+
+  -- Wait for the user to make a choice
+  while true do
+    local _, line_nr = vim.api.nvim_win_get_cursor(choice_win)
+    choice = vim.api.nvim_buf_get_lines(choice_buf, line_nr - 1, line_nr, false)[1]
+    if choice then
+      choice = tonumber(choice:match("%d+"))
+      if choice and choice >= 1 and choice <= 4 then
+        break
+      end
+    end
   end
 
   local action
