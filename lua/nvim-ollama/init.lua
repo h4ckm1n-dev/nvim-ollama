@@ -29,67 +29,72 @@ local function extract_message(json_response)
   return message
 end
 
--- Displays text in a floating window for clearer prompts
-local function display_floating_prompt(prompt_title, prompt_options)
-  local content = prompt_title .. "\n" .. table.concat(prompt_options, "\n")
-  local height = #prompt_options + 1
-  local width = #prompt_title + 2
-  local row = (vim.o.lines - height) / 2
-  local col = (vim.o.columns - width) / 2
+-- Displays text in a split window on the right side taking 1/3 of the space
+local function display_in_side_panel(text)
+  -- Calculate width for the new window to take up 1/3 of the current Vim window
+  local total_width = vim.o.columns
+  local new_win_width = math.floor(total_width * 2 / 3)
 
+  -- Split the window and adjust its width
+  vim.cmd("vsplit")
+  vim.cmd("wincmd l")
+  vim.api.nvim_win_set_width(0, new_win_width)
+
+  -- Set up a new buffer for the extracted message
   local buf = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_lines(buf, 0, -1, false, prompt_options)
-  vim.api.nvim_buf_set_option(buf, "modifiable", false)
+  vim.api.nvim_win_set_buf(0, buf)
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(text, "\n"))
 
-  local opts = {
-    relative = "editor",
-    row = row,
-    col = col,
-    width = width,
-    height = height,
-    style = "minimal",
-    focusable = true,
-    border = "rounded",
-  }
+  -- Set buffer properties
+  vim.api.nvim_buf_set_option(buf, "bufhidden", "wipe")
 
-  local win = vim.api.nvim_open_win(buf, true, opts)
-  return win, buf
+  return buf
+end
+
+-- Sets keymaps for the user's decision to replace text or not
+local function set_keymaps_for_decision(buf, new_code)
+  local function close_window()
+    -- Close the current window and return to the original window
+    vim.cmd("wincmd h")
+    vim.cmd("wincmd q")
+  end
+
+  vim.api.nvim_buf_set_keymap(buf, "n", "y", "", {
+    noremap = true,
+    silent = true,
+    callback = function()
+      -- Switch to the original window and replace the text
+      vim.cmd("wincmd h")
+      vim.api.nvim_buf_set_lines(0, 0, -1, false, vim.split(new_code, "\n"))
+      close_window()
+    end,
+  })
+
+  vim.api.nvim_buf_set_keymap(buf, "n", "n", "", { noremap = true, silent = true, callback = close_window })
 end
 
 -- Main function to interact with the API with interactive mode
 function M.AskOllama()
   local code_snippet = get_visual_selection()
   
-  -- Prompt the user for an action using a floating window
-  local choice_win, choice_buf = display_floating_prompt("Choose an action:\n" .. code_snippet, {"1: Improve", "2: Debug", "3: Analyse", "4: Custom"})
-
-  local choice
-
-  -- Wait for the user to make a choice
-  while true do
-    local _, line_nr = vim.api.nvim_win_get_cursor(choice_win)
-    choice = vim.api.nvim_buf_get_lines(choice_buf, line_nr - 1, line_nr, false)[1]
-    if choice then
-      choice = tonumber(choice:match("%d+"))
-      if choice and choice >= 1 and choice <= 4 then
-        break
-      end
-    end
-  end
-
+  -- Prompt the user for an action
+  local choice = vim.fn.input("Choose an action (1: Improve, 2: Debug, 3: Analyse, 4: Custom): ")
   local action
   local custom_prompt
 
   -- Match the choice with the corresponding action
-  if choice == 1 then
+  if choice == "1" then
     action = "Improve"
-  elseif choice == 2 then
+  elseif choice == "2" then
     action = "Debug"
-  elseif choice == 3 then
+  elseif choice == "3" then
     action = "Analyse"
-  elseif choice == 4 then
+  elseif choice == "4" then
     custom_prompt = vim.fn.input("Enter your custom prompt: ")
     action = "Custom"
+  else
+    print("Invalid choice. Cancelling operation.")
+    return
   end
 
   local prompt
@@ -130,6 +135,4 @@ function M.AskOllama()
   local message = extract_message(response)
   local buf = display_in_side_panel("API Response: " .. message .. "\nPress 'y' to replace, 'n' to cancel.")
   set_keymaps_for_decision(buf, message)
-
-  vim.api.nvim_win_close(choice_win, true)
 end
