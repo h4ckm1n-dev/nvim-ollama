@@ -131,8 +131,8 @@ function M.AskOllama()
   local choice = nil
   local prompt_buf = vim.api.nvim_win_get_buf(win)
   while choice == nil do
-    local _, input_key = vim.wait(100, function()
-      return vim.api.nvim_buf_is_valid(prompt_buf)
+    local _, input_key = vim.wait(100, function(_, key)
+      return key == "1" or key == "2" or key == "3" or key == "q"
     end, true)
     if input_key then
       if input_key == "1" or input_key == "2" or input_key == "3" then
