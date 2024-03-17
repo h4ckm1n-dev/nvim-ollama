@@ -76,40 +76,22 @@ end
 -- Main function to interact with the API
 function M.AskOllama()
   local code_snippet = get_visual_selection()
-  local prompt = "Code Snippet:\n" .. code_snippet .. "\n\nImprove this code?"
-  local data = {
-    model = "mixtral",
-    prompt = prompt,
-    stream = false,
-    max_tokens = 1000,
-    temperature = 0.5,
-    top_p = 1.0,
-    frequency_penalty = 0.8,
-    presence_penalty = 0.0,
-    stop = "\n",
-  }
-
-  local response_body = {}
-  local _, code = http.request({
-    url = API_URL,
-    method = "POST",
-    headers = { ["Content-Type"] = "application/json" },
-    source = ltn12.source.string(json.encode(data)),
-    sink = ltn12.sink.table(response_body),
-    timeout = nil, 
-  })
-
-  if code ~= 200 then
-    print("Failed to send debugging request. Response code: ", code)
-    return
+  local prompt = "Code Snippet:\n" .. code_snippet .. "\n\nWhat would you like to do?\n1. Analyze\n2. Improve\n3. Debug"
+  
+  local choice = vim.fn.input(prompt)
+  if choice == "1" then
+    print("Analyzing code...")
+    -- Perform code analysis
+  elseif choice == "2" then
+    print("Improving code...")
+    -- Perform code improvement
+  elseif choice == "3" then
+    print("Debugging code...")
+    -- Perform code debugging
+  else
+    print("Invalid choice. Please enter a number corresponding to one of the options.")
   end
-
-  local response = table.concat(response_body)
-  local message = extract_message(response)
-  local buf = display_in_side_panel("API Response: " .. message .. "\nPress 'y' to replace, 'n' to cancel.")
-  set_keymaps_for_decision(buf, message)
 end
-
 
 -- Setup function for lazy.nvim
 function M.setup()
