@@ -95,7 +95,7 @@ end
 -- Main function to interact with the API
 function M.AskOllama(choice)
   local code_snippet = get_visual_selection()
-  local prompt = "Choice: " .. choice .. "\nCode Snippet: \n" .. code_snippet
+  local prompt = "Choice: " .. (type(choice) == "string" and choice or "Unknown") .. "\nCode Snippet: \n" .. code_snippet
   local data = {
     model = "mixtral",
     prompt = prompt,
@@ -128,22 +128,3 @@ function M.AskOllama(choice)
   local buf = display_in_side_panel("API Response: " .. message .. "\nPress 'y' to replace, 'n' to cancel.")
   set_keymaps_for_decision(buf, message)
 end
-
--- Setup function for lazy.nvim
-function M.setup()
-  vim.api.nvim_create_user_command("AskOllama", M.AskOllama, {})
-end
-
--- Function to get the user choice
-function M.get_user_choice()
-  return user_choice
-end
-
--- Function to prompt user with choices
-function M.prompt_choice()
-  local choice = vim.fn.inputlist(vim.tbl_values(choices))
-  local choice_name = choices[choice]
-  M.AskOllama(choice_name)
-end
-
-return M
