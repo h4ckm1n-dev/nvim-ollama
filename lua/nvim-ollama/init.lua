@@ -17,41 +17,43 @@ local function get_visual_selection()
   return table.concat(lines, "\n")
 end
 
--- Displays text in a dynamically sized floating window
-local function display_in_floating_window(text)
-  local lines = vim.split(text, "\n")
-  local width = math.min(80, vim.o.columns - 4)
-  local height = math.min(#lines + 2, vim.o.lines - 4)
+-- Displays text in a split window on the left side
+local function display_in_side_panel(text)
+  -- Split the window vertically and move to the new window
+  vim.cmd("vsplit")
+  vim.cmd("wincmd h")
+  
+  -- Set up a new buffer for the response
   local buf = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-  local win = vim.api.nvim_open_win(buf, true, {
-    relative = "editor",
-    width = width,
-    height = height,
-    col = (vim.o.columns - width) / 2,
-    row = (vim.o.lines - height) / 2,
-    style = "minimal",
-    border = "rounded",
-  })
-  return buf, win
+  vim.api.nvim_win_set_buf(0, buf)
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(text, "\n"))
+
+  -- Set buffer properties
+  vim.api.nvim_buf_set_option(buf, "bufhidden", "wipe")
+  
+  return buf
 end
 
 -- Sets keymaps for the user's decision to replace text or not
-local function set_keymaps_for_decision(buf, win, new_code)
+local function set_keymaps_for_decision(buf, new_code)
   local function close_window()
-    vim.api.nvim_win_close(win, true)
+    -- Close the current window and return to the original window
+    vim.cmd("wincmd l")
+    vim.cmd("wincmd q")
   end
+
   vim.api.nvim_buf_set_keymap(buf, "n", "y", "", {
     noremap = true,
     silent = true,
     callback = function()
+      -- Switch to the original window and replace the text
+      vim.cmd("wincmd l")
       vim.api.nvim_buf_set_lines(0, 0, -1, false, vim.split(new_code, "\n"))
       close_window()
     end,
   })
+
   vim.api.nvim_buf_set_keymap(buf, "n", "n", "", { noremap = true, silent = true, callback = close_window })
-  -- Ensure these keymaps only exist in this buffer
-  vim.api.nvim_buf_set_option(buf, "bufhidden", "wipe")
 end
 
 -- Main function to interact with the API
@@ -86,8 +88,8 @@ function M.AskOllama()
   end
 
   local response = table.concat(response_body)
-  local buf, win = display_in_floating_window("API Response: " .. response .. "\nPress 'y' to replace, 'n' to cancel.")
-  set_keymaps_for_decision(buf, win, response)
+  local buf = display_in_side_panel("API Response: " .. response .. "\nPress 'y' to replace, 'n' to cancel.")
+  set_keymaps_for_decision(buf, response)
 end
 
 -- Setup function for lazy.nvim
