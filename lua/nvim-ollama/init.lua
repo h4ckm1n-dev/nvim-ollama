@@ -6,6 +6,17 @@ local ltn12 = require("ltn12")
 
 local API_URL = "http://127.0.0.1:11434/api/generate"
 
+-- Variable to store user's choice
+local user_choice = ""
+
+-- Possible choices
+local choices = {
+  improve = "Improve",
+  analyse = "Analyse",
+  debug = "Debug",
+  custom = "Custom"
+}
+
 -- Gets text from the current visual selection in Neovim
 local function get_visual_selection()
   local _, start_row, _, _ = unpack(vim.fn.getpos("'<"))
@@ -67,16 +78,24 @@ local function set_keymaps_for_decision(buf, new_code)
       vim.cmd("wincmd h")
       vim.api.nvim_buf_set_lines(0, 0, -1, false, vim.split(new_code, "\n"))
       close_window()
+      user_choice = "replace"
     end,
   })
 
-  vim.api.nvim_buf_set_keymap(buf, "n", "n", "", { noremap = true, silent = true, callback = close_window })
+  vim.api.nvim_buf_set_keymap(buf, "n", "n", "", {
+    noremap = true,
+    silent = true,
+    callback = function()
+      close_window()
+      user_choice = "cancel"
+    end,
+  })
 end
 
 -- Main function to interact with the API
-function M.AskOllama()
+function M.AskOllama(choice)
   local code_snippet = get_visual_selection()
-  local prompt = "Improve this code: " .. code_snippet
+  local prompt = "Choice: " .. choice .. "\nCode Snippet: \n" .. code_snippet
   local data = {
     model = "mixtral",
     prompt = prompt,
@@ -96,7 +115,7 @@ function M.AskOllama()
     headers = { ["Content-Type"] = "application/json" },
     source = ltn12.source.string(json.encode(data)),
     sink = ltn12.sink.table(response_body),
-    timeout = nil, 
+    timeout = nil,
   })
 
   if code ~= 200 then
@@ -113,6 +132,18 @@ end
 -- Setup function for lazy.nvim
 function M.setup()
   vim.api.nvim_create_user_command("AskOllama", M.AskOllama, {})
+end
+
+-- Function to get the user choice
+function M.get_user_choice()
+  return user_choice
+end
+
+-- Function to prompt user with choices
+function M.prompt_choice()
+  local choice = vim.fn.inputlist(vim.tbl_values(choices))
+  local choice_name = choices[choice]
+  M.AskOllama(choice_name)
 end
 
 return M
