@@ -1,2 +1,1 @@
-## nvim-ollama-copilot
-
+## nvim-ollama
