@@ -13,6 +13,10 @@ end
 
 -- Extracts the actual message from the API response
 local function extract_message(json_response)
+	if json_response == nil then
+		print("JSON response is nil")
+		return "Error decoding response."
+	end
 	local decoded = vim.fn.json_decode(json_response)
 	if decoded == nil then
 		print("Error decoding JSON")
@@ -27,6 +31,10 @@ end
 local function http_post(url, data)
 	local command = string.format("curl -X POST -H 'Content-Type: application/json' -d '%s' %s", data, url)
 	local handle = io.popen(command)
+	if handle == nil then
+		print("Failed to execute HTTP POST request")
+		return nil
+	end
 	local response = handle:read("*a")
 	handle:close()
 	return response
