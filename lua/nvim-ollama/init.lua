@@ -62,40 +62,45 @@ local function user_choice()
     end
 end
 
-local function format_and_display_response(response)
-    -- Create a horizontal split at the bottom
-    vim.cmd('botright new')
-    -- Optionally, set the height of the new split
-    vim.api.nvim_win_set_height(0, 20) -- Adjust the height as needed
+local function format_and_display_response(responses)
+    vim.cmd('botright new') -- Create a new split at the bottom
+    vim.api.nvim_win_set_height(0, 30) -- Adjust the height as needed
 
-    local header = "API Response:\n-----------------------\n"
-    local body = ""
+    local full_response = ""
+    local done = false
 
-    -- Assuming the response is iterated as individual words
-    for json_response in response:gmatch("{.-}") do
-        local word = extract_message(json_response)
-        -- Append the word to the body, adding a space for separation
-        body = body .. word .. " "
+    for line in responses:gmatch("[^\r\n]+") do
+        local json_response = vim.fn.json_decode(line)
+        if json_response then
+            -- Append the "response" content to the full response string
+            local part = json_response.response or ""
+            -- Replace escaped newlines and other control characters
+            part = part:gsub("\\n", "\n"):gsub("\\\"", "\"")
+            full_response = full_response .. part
+            if json_response.done then
+                done = true
+                break -- Stop processing if the "done" flag is true
+            end
+        end
     end
 
-    -- Trim the final space at the end of the body, if necessary
-    body = body:gsub("%s+$", "")
-
-    -- The full formatted response includes the header and the body
-    local formatted_response = header .. body
+    if not done then
+        -- If the loop finished without finding a "done": true, log a message
+        print("API response incomplete or malformed.")
+        return
+    end
 
     -- Set the formatted response in the current buffer
     local buf = vim.api.nvim_win_get_buf(0)
+    vim.api.nvim_buf_set_option(buf, 'modifiable', true)
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
-    -- Splitting the formatted response into lines to be compatible with 'nvim_buf_set_lines'
     local lines = {}
-    for line in formatted_response:gmatch("([^\n]*)\n?") do
+    for line in full_response:gmatch("([^\n]*)\n?") do
         table.insert(lines, line)
     end
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
     vim.api.nvim_buf_set_option(buf, 'modifiable', false)
 end
-
 
 
 local function AskOllama()
