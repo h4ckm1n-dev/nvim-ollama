@@ -38,19 +38,28 @@ end
 
 -- Function to format and display the response in a new buffer at the bottom
 local function format_and_display_response(response)
-    vim.cmd('botright new') -- Create a new split at the bottom
-    vim.api.nvim_win_set_height(0, 10) -- Adjust the height as needed
+    vim.cmd('botright vnew') -- Open a new vertical split on the right
+    local width = math.floor(vim.api.nvim_get_option("columns") * 0.3) -- Ensure width is an integer
+    vim.api.nvim_win_set_width(0, width) -- Adjust the width as needed
 
-    local buf = vim.api.nvim_win_get_buf(0)
+    local buf = vim.api.nvim_get_current_buf()
     vim.api.nvim_buf_set_option(buf, 'modifiable', true)
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
-    
-    -- Splitting the response into lines
-    local lines = {}
-    for line in response:gmatch("([^\n]*)\n?") do
-        table.insert(lines, line)
+
+    -- Initialize an empty table to collect all response parts
+    local full_response = {}
+
+    -- Iterate through each line of the response assuming each line is a valid JSON object
+    for line in response:gmatch("[^\r\n]+") do
+        local json_response = vim.fn.json_decode(line)
+        if json_response and json_response.response then
+            -- Append the "response" part of the JSON object to the full response
+            table.insert(full_response, json_response.response)
+        end
     end
-    vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+
+    -- Set the collected response parts to the buffer
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, full_response)
     vim.api.nvim_buf_set_option(buf, 'modifiable', false)
 end
 
