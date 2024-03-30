@@ -82,7 +82,7 @@ local function AskOllama()
     local action_or_question = user_choice()
     local prompt = "Code Snippet:\n" .. code_snippet .. "\n\n" .. action_or_question
     local data = vim.fn.json_encode({
-        model = "code-davinci-002",
+        model = "mixtral",
         prompt = prompt,
         temperature = 0.5,
         max_tokens = 1500,
