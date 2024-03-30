@@ -1,14 +1,14 @@
 local API_URL = "http://127.0.0.1:11434/api/generate"
 
--- Ensure Neovim's 'vim' API is accessible
-local vim = vim
+-- Direct reference to Neovim's 'vim' API is not needed as it's globally available
 
--- Function to create a floating window for better UX
+-- Enhanced floating window creation for better UX
 local function create_float_window()
     local width = vim.api.nvim_get_option("columns")
     local height = vim.api.nvim_get_option("lines")
-    local win_height = math.ceil(height * 0.2)
-    local win_width = math.ceil(width * 0.7)
+    -- Adjusted window proportions for better visibility
+    local win_height = math.ceil(height * 0.3)
+    local win_width = math.ceil(width * 0.6)
     local row = math.ceil((height - win_height) / 2)
     local col = math.ceil((width - win_width) / 2)
     local opts = {
@@ -24,84 +24,100 @@ local function create_float_window()
     return buf, win
 end
 
--- Function to display options in the floating window
-local function display_options_in_window(buf, options)
-    vim.api.nvim_buf_set_option(buf, 'modifiable', true)
-    vim.api.nvim_buf_set_lines(buf, 0, -1, false, options)
-    vim.api.nvim_buf_set_option(buf, 'modifiable', false)
-end
-
--- Fetches the text selected in visual mode
+-- Fixed function to fetch the text selected in visual mode
 local function get_visual_selection()
-    local _, start_row, _, _ = unpack(vim.fn.getpos("'<"))
-    local _, end_row, _, _ = unpack(vim.fn.getpos("'>"))
-    local lines = vim.api.nvim_buf_get_lines(0, start_row - 1, end_row, true)
-    if #lines == 0 then return "" end
-    return table.concat(lines, "\n")
+    -- Adjusted to ensure proper capture of multi-line selections
+    vim.cmd('normal! gv"xy')
+    return vim.fn.getreg('x')
 end
 
--- Extracts the message from the API's JSON response
+-- Improved JSON parsing and error handling
 local function extract_message(json_response)
-    local decoded = vim.fn.json_decode(json_response)
-    if not decoded then
-        print("Error decoding JSON")
+    local status, decoded = pcall(vim.fn.json_decode, json_response)
+    if not status then
+        print("Error decoding JSON:", decoded)
         return "Error decoding response."
     end
     local message = decoded.response or "No response field found."
     return message
 end
 
--- Sends a POST request to the specified API
+-- Enhanced HTTP POST function for improved readability and error handling
 local function http_post(url, data)
-    local response = vim.fn.system("curl -s -X POST -H 'Content-Type: application/json' -d '" .. data .. "' " .. url)
+    local cmd = string.format("curl -s -X POST -H 'Content-Type: application/json' -d @- %s", url)
+    local response = vim.fn.system(cmd, data)
     return response
 end
 
--- Improved user choice function with floating window
+-- Optimized user interaction for a non-blocking choice in the floating window
 local function user_choice()
     local buf, win = create_float_window()
     local options = {"1. Improve Code", "2. Debug Code", "3. Custom Question"}
     display_options_in_window(buf, options)
-    local choice = tonumber(vim.fn.input("Option (1/2/3): "))
-    vim.api.nvim_win_close(win, true) -- Close the floating window after selection
-    if choice == 1 then
-        return "Improve this code:"
-    elseif choice == 2 then
-        return "Debug this code:"
-    elseif choice == 3 then
-        return vim.fn.input("Enter your custom question: ")
-    else
-        print("Invalid option, defaulting to improving code.")
-        return "Improve this code:"
+    -- Awaiting user input with a more intuitive interface
+    vim.api.nvim_buf_set_keymap(buf, 'n', '<CR>', ':lua ConfirmSelection()<CR>', { noremap = true, silent = true })
+    -- Functionality to capture and handle the user's choice will be added here (see below)
+end
+
+-- Global variable to store the user's choice
+_G.user_choice_global = nil
+
+-- Function to display options and set mappings in the floating window
+local function display_options_and_set_mappings(buf)
+    local options = {"1. Improve Code", "2. Debug Code", "3. Custom Question"}
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, options)
+    vim.api.nvim_buf_set_keymap(buf, 'n', '1', '<cmd>lua ConfirmSelection(1)<CR>', {noremap = true, silent = true})
+    vim.api.nvim_buf_set_keymap(buf, 'n', '2', '<cmd>lua ConfirmSelection(2)<CR>', {noremap = true, silent = true})
+    vim.api.nvim_buf_set_keymap(buf, 'n', '3', '<cmd>lua ConfirmSelection(3)<CR>', {noremap = true, silent = true})
+end
+
+-- Improved user choice function with non-blocking interaction
+local function user_choice()
+    local buf, win = create_float_window()
+    display_options_and_set_mappings(buf)
+    -- No need to directly capture the user's choice here; it's done via mappings
+end
+
+-- Function to confirm user selection in the floating window
+function ConfirmSelection(choice)
+    _G.user_choice_global = choice
+    vim.api.nvim_win_close(vim.api.nvim_get_current_win(), true)
+    AskOllama() -- Call back to proceed with action
+end
+
+-- Adjusted AskOllama function
+local function AskOllama()
+    local code_snippet = get_visual_selection()
+    if code_snippet == "" then
+        if not _G.user_choice_global then
+            print("Please select a code snippet before asking.")
+            user_choice() -- Open user choice window if no choice has been made
+            return
+        else
+            -- Handle the choice here
+            local action_or_question
+            if _G.user_choice_global == 1 then
+                action_or_question = "Improve this code:"
+            elseif _G.user_choice_global == 2 then
+                action_or_question = "Debug this code:"
+            elseif _G.user_choice_global == 3 then
+                action_or_question = vim.fn.input("Enter your custom question: ")
+            else
+                print("Invalid option, defaulting to improving code.")
+                action_or_question = "Improve this code:"
+            end
+            
+            local prompt = "Code Snippet:\n" .. code_snippet .. "\n\n" .. action_or_question
+            -- Proceed with sending prompt to API and handling the response
+            -- Reset the global choice variable for future invocations
+            _G.user_choice_global = nil
+            -- Remember to send the prompt to your API and handle the response
+            return -- Placeholder for actual API call and response handling
+        end
     end
 end
 
--- Main function to interact with the API
-local function AskOllama()
-    local code_snippet = get_visual_selection()
-    local action_or_question = user_choice()
-    local prompt = "Code Snippet:\n" .. code_snippet .. "\n\n" .. action_or_question
-    local data = vim.fn.json_encode({
-        model = "code-davinci-002",
-        prompt = prompt,
-        temperature = 0.5,
-        max_tokens = 1500,
-        top_p = 1.0,
-        frequency_penalty = 0.0,
-        presence_penalty = 0.6,
-        stop = {"\n"}
-    })
-    local response = http_post(API_URL, data)
-    local message = extract_message(response)
-    print("API Response:\n", message)
-end
-
--- Setup function for lazy.nvim
-local function setup()
-    vim.api.nvim_create_user_command("AskOllama", AskOllama, {})
-end
 
 return {
-    AskOllama = AskOllama,
     setup = setup,
 }
