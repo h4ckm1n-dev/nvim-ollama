@@ -95,12 +95,17 @@ local function AskOllama()
         stop = {"\n"}
     })
     local response = http_post(API_URL, data)
-    -- Parse each JSON object from the API response
-    for json_response in response:gmatch("{.-}") do
-        local message = extract_message(json_response)
-        print("API Response:\n", message)
-    end
+    
+    -- Create a new buffer for the API response
+    local response_buf = vim.api.nvim_create_buf(true, false)
+    vim.api.nvim_buf_set_lines(response_buf, 0, -1, false, {response})
+
+    -- Open the new buffer in a split
+    vim.cmd('botright vsplit')
+    vim.api.nvim_buf_set_option(response_buf, 'modifiable', false)
+    vim.cmd('wincmd l') -- Move focus to the new split
 end
+
 
 -- Setup function for lazy.nvim
 local function setup()
