@@ -47,7 +47,7 @@ local function extract_message(json_response)
         print("Error decoding JSON")
         return "Error decoding response."
     end
-    local message = decoded.choices[1].text or "No response field found."
+    local message = decoded.response or "No response field found."
     return message
 end
 
@@ -85,6 +85,7 @@ local function AskOllama()
     local action_or_question = user_choice()
     local prompt = "Code Snippet:\n" .. code_snippet .. "\n\n" .. action_or_question
     local data = vim.fn.json_encode({
+        model = "mixtral",
         prompt = prompt,
         temperature = 0.5,
         max_tokens = 1500,
@@ -94,8 +95,11 @@ local function AskOllama()
         stop = {"\n"}
     })
     local response = http_post(API_URL, data)
-    local message = extract_message(response)
-    print("API Response:\n", message)
+    -- Parse each JSON object from the API response
+    for json_response in response:gmatch("{.-}") do
+        local message = extract_message(json_response)
+        print("API Response:\n", message)
+    end
 end
 
 -- Setup function for lazy.nvim
