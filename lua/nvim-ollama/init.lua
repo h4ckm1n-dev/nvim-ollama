@@ -22,36 +22,16 @@ local function display_options_in_window(buf, options)
     vim.api.nvim_buf_set_option(buf, 'modifiable', false)
 end
 
-local function get_visual_selection()
-    -- Use `vim.fn.getpos` to get the start and end positions of the visual selection
-    local start_pos = vim.fn.getpos("'<")
-    local end_pos = vim.fn.getpos("'>")
-
-    -- Adjust for Lua 1-based indexing and end line exclusive behavior of `nvim_buf_get_lines`
-    local start_line, start_col = start_pos[2], start_pos[3]
-    local end_line, end_col = end_pos[2], end_pos[4]
-
-    if start_line == 0 or end_line == 0 then
-        print("No selection found.")
+-- New function to get content from the clipboard
+local function get_clipboard_content()
+    -- Fetch the clipboard content. Replace `"+"` with `"*"` if necessary for your system.
+    local clipboard_content = vim.fn.getreg("+")
+    if clipboard_content == "" then
+        print("Clipboard is empty.")
         return ""
     end
-
-    -- Fetch the lines from the buffer
-    local lines = vim.api.nvim_buf_get_lines(0, start_line - 1, end_line, false)
-
-    -- Handle single-line selections separately to include selected columns only
-    if start_line == end_line then
-        return lines[1]:sub(start_col, end_col)
-    else
-        -- Adjust the first and last lines based on the column selection
-        lines[1] = lines[1]:sub(start_col)
-        lines[#lines] = lines[#lines]:sub(1, end_col)
-    end
-
-    -- Concatenate the lines to form the full selected text
-    return table.concat(lines, "\n")
+    return clipboard_content
 end
-
 
 local function extract_message(json_response)
     local decoded = vim.fn.json_decode(json_response)
@@ -98,25 +78,21 @@ local function format_and_display_response(responses)
     for line in responses:gmatch("[^\r\n]+") do
         local json_response = vim.fn.json_decode(line)
         if json_response then
-            -- Append the "response" content to the full response string
             local part = json_response.response or ""
-            -- Replace escaped newlines and other control characters
             part = part:gsub("\\n", "\n"):gsub("\\\"", "\"")
             full_response = full_response .. part
             if json_response.done then
                 done = true
-                break -- Stop processing if the "done" flag is true
+                break
             end
         end
     end
 
     if not done then
-        -- If the loop finished without finding a "done": true, log a message
         print("API response incomplete or malformed.")
         return
     end
 
-    -- Set the formatted response in the current buffer
     local buf = vim.api.nvim_win_get_buf(0)
     vim.api.nvim_buf_set_option(buf, 'modifiable', true)
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
@@ -128,9 +104,8 @@ local function format_and_display_response(responses)
     vim.api.nvim_buf_set_option(buf, 'modifiable', false)
 end
 
-
 local function AskOllama()
-    local code_snippet, action_or_question = get_visual_selection(), user_choice()
+    local code_snippet, action_or_question = get_clipboard_content(), user_choice()
     local prompt = "Code Snippet:\n" .. code_snippet .. "\n\n" .. action_or_question
     local data = vim.fn.json_encode({
         model = "mixtral",
