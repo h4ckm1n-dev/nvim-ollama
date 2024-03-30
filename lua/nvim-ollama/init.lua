@@ -77,8 +77,6 @@ local function user_choice()
         print("Invalid option, defaulting to improving code.")
         return "Improve this code:"
     end
-end
-
 -- Main function to interact with the API
 local function AskOllama()
     local code_snippet = get_visual_selection()
@@ -98,13 +96,27 @@ local function AskOllama()
     
     -- Create a new buffer for the API response
     local response_buf = vim.api.nvim_create_buf(true, false)
-    vim.api.nvim_buf_set_lines(response_buf, 0, -1, false, {response})
+    
+    -- Format the response
+    local formatted_response = {}
+    for json_response in response:gmatch("{.-}") do
+        local decoded_response = vim.fn.json_decode(json_response)
+        local message = decoded_response.response or "No response found."
+        table.insert(formatted_response, "API Response:")
+        table.insert(formatted_response, "-----------------------")
+        table.insert(formatted_response, message)
+        table.insert(formatted_response, "")
+    end
+    
+    -- Set the lines in the new buffer
+    vim.api.nvim_buf_set_lines(response_buf, 0, -1, false, formatted_response)
 
     -- Open the new buffer in a split
     vim.cmd('botright vsplit')
     vim.api.nvim_buf_set_option(response_buf, 'modifiable', false)
     vim.cmd('wincmd l') -- Move focus to the new split
 end
+
 
 
 -- Setup function for lazy.nvim
