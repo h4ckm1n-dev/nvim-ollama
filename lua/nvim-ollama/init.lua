@@ -36,6 +36,32 @@ local function http_post(url, data)
     return response
 end
 
+-- Function to format and display the response in a new buffer at the bottom
+local function format_and_display_response(response)
+    vim.cmd('botright vnew') -- Open a new vertical split on the right
+    vim.api.nvim_win_set_width(0, vim.api.nvim_get_option("columns") * 0.3) -- Adjust the width as needed
+
+    local buf = vim.api.nvim_get_current_buf()
+    vim.api.nvim_buf_set_option(buf, 'modifiable', true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
+
+    -- Initialize an empty table to collect all response parts
+    local full_response = {}
+
+    -- Iterate through each line of the response assuming each line is a valid JSON object
+    for line in response:gmatch("[^\r\n]+") do
+        local json_response = vim.fn.json_decode(line)
+        if json_response and json_response.response then
+            -- Append the "response" part of the JSON object to the full response
+            table.insert(full_response, json_response.response)
+        end
+    end
+
+    -- Set the collected response parts to the buffer
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, full_response)
+    vim.api.nvim_buf_set_option(buf, 'modifiable', false)
+end
+
 -- Main function to ask the user for a question, get clipboard content, and send to API
 local function AskOllama()
     local code_snippet = get_clipboard_content()
@@ -55,7 +81,7 @@ local function AskOllama()
         stop = {"\n"}
     })
     local response = http_post(API_URL, data)
-    print(response) -- Handle the response appropriately, maybe display it in a floating window or a new buffer
+    format_and_display_response(response) -- Display the response at the bottom
 end
 
 -- Function to set up the user command
