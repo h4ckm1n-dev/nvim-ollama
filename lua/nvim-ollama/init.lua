@@ -63,23 +63,39 @@ local function user_choice()
 end
 
 local function format_and_display_response(response)
-    local response_buf = vim.api.nvim_create_buf(true, false)
-    -- Create a horizontal split at the bottom for the new buffer
-    vim.cmd('botright split new')
-    vim.api.nvim_win_set_buf(0, response_buf)  -- Ensure the new buffer is displayed in the newly created window
-    local formatted_response = {"API Response:", "-----------------------"}
+    -- Create a horizontal split at the bottom
+    vim.cmd('botright new')
+    -- Optionally, set the height of the new split
+    vim.api.nvim_win_set_height(0, 20) -- Adjust the height as needed
+
+    -- Initial header for the response
+    local header = "API Response:\n-----------------------\n"
+    local formatted_response = header
+
+    -- Assuming 'response' is a JSON string that contains multiple messages
+    -- Concatenate all messages into a single string
     for json_response in response:gmatch("{.-}") do
         local message = extract_message(json_response)
-        for line in message:gmatch("[^\r\n]+") do
-            table.insert(formatted_response, line)
-        end
-        table.insert(formatted_response, "")
+        formatted_response = formatted_response .. message .. "\n"
     end
-    vim.api.nvim_buf_set_lines(response_buf, 0, -1, false, formatted_response)
-    vim.api.nvim_buf_set_option(response_buf, 'modifiable', false)
-    -- Move focus to the new split. The 'wincmd p' command switches to the previous (in this context, newly created) window.
-    vim.cmd('wincmd p')
+
+    -- Use 'nvim_buf_set_lines' to set the response in the current buffer
+    -- Find the buffer number of the current window
+    local buf = vim.api.nvim_win_get_buf(0)
+    -- Clear any existing lines in the buffer
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
+    -- Convert the formatted response into a table of lines
+    local lines = {}
+    for line in formatted_response:gmatch("([^\n]*)\n?") do
+        table.insert(lines, line)
+    end
+    -- Set the lines in the buffer
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+
+    -- Ensure the buffer is not modifiable
+    vim.api.nvim_buf_set_option(buf, 'modifiable', false)
 end
+
 
 local function AskOllama()
     local code_snippet, action_or_question = get_visual_selection(), user_choice()
