@@ -68,33 +68,34 @@ local function format_and_display_response(response)
     -- Optionally, set the height of the new split
     vim.api.nvim_win_set_height(0, 20) -- Adjust the height as needed
 
-    -- Initial header for the response
     local header = "API Response:\n-----------------------\n"
-    local formatted_response = header
+    local body = ""
 
-    -- Assuming 'response' is a JSON string that contains multiple messages
-    -- Concatenate all messages into a single string
+    -- Assuming the response is iterated as individual words
     for json_response in response:gmatch("{.-}") do
-        local message = extract_message(json_response)
-        formatted_response = formatted_response .. message .. "\n"
+        local word = extract_message(json_response)
+        -- Append the word to the body, adding a space for separation
+        body = body .. word .. " "
     end
 
-    -- Use 'nvim_buf_set_lines' to set the response in the current buffer
-    -- Find the buffer number of the current window
+    -- Trim the final space at the end of the body, if necessary
+    body = body:gsub("%s+$", "")
+
+    -- The full formatted response includes the header and the body
+    local formatted_response = header .. body
+
+    -- Set the formatted response in the current buffer
     local buf = vim.api.nvim_win_get_buf(0)
-    -- Clear any existing lines in the buffer
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
-    -- Convert the formatted response into a table of lines
+    -- Splitting the formatted response into lines to be compatible with 'nvim_buf_set_lines'
     local lines = {}
     for line in formatted_response:gmatch("([^\n]*)\n?") do
         table.insert(lines, line)
     end
-    -- Set the lines in the buffer
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-
-    -- Ensure the buffer is not modifiable
     vim.api.nvim_buf_set_option(buf, 'modifiable', false)
 end
+
 
 
 local function AskOllama()
