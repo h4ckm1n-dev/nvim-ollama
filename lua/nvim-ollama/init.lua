@@ -1,18 +1,16 @@
 local API_URL = "http://127.0.0.1:11434/api/generate"
-local vim = vim -- Ensure Neovim's 'vim' API is accessible
+
+-- Ensure Neovim's 'vim' API is accessible
+local vim = vim
 
 -- Function to create a floating window for better UX
 local function create_float_window()
     local width = vim.api.nvim_get_option("columns")
     local height = vim.api.nvim_get_option("lines")
-
-    -- Calculate window size and position
     local win_height = math.ceil(height * 0.2)
     local win_width = math.ceil(width * 0.7)
     local row = math.ceil((height - win_height) / 2)
     local col = math.ceil((width - win_width) / 2)
-
-    -- Window buffer and options
     local opts = {
         style = "minimal",
         relative = "editor",
@@ -21,10 +19,8 @@ local function create_float_window()
         row = row,
         col = col
     }
-
-    local buf = vim.api.nvim_create_buf(false, true) -- Create a buffer for the window
-    local win = vim.api.nvim_open_win(buf, true, opts) -- Open the window
-
+    local buf = vim.api.nvim_create_buf(false, true)
+    local win = vim.api.nvim_open_win(buf, true, opts)
     return buf, win
 end
 
@@ -35,22 +31,45 @@ local function display_options_in_window(buf, options)
     vim.api.nvim_buf_set_option(buf, 'modifiable', false)
 end
 
+-- Fetches the text selected in visual mode
+local function get_visual_selection()
+    local _, start_row, _, _ = unpack(vim.fn.getpos("'<"))
+    local _, end_row, _, _ = unpack(vim.fn.getpos("'>"))
+    local lines = vim.api.nvim_buf_get_lines(0, start_row - 1, end_row, true)
+    if #lines == 0 then return "" end
+    return table.concat(lines, "\n")
+end
+
+-- Extracts the message from the API's JSON response
+local function extract_message(json_response)
+    local decoded = vim.fn.json_decode(json_response)
+    if not decoded then
+        print("Error decoding JSON")
+        return "Error decoding response."
+    end
+    local message = decoded.response or "No response field found."
+    return message
+end
+
+-- Sends a POST request to the specified API
+local function http_post(url, data)
+    local response = vim.fn.system("curl -s -X POST -H 'Content-Type: application/json' -d '" .. data .. "' " .. url)
+    return response
+end
+
 -- Improved user choice function with floating window
 local function user_choice()
     local buf, win = create_float_window()
     local options = {"1. Improve Code", "2. Debug Code", "3. Custom Question"}
     display_options_in_window(buf, options)
-
     local choice = tonumber(vim.fn.input("Option (1/2/3): "))
     vim.api.nvim_win_close(win, true) -- Close the floating window after selection
-
     if choice == 1 then
         return "Improve this code:"
     elseif choice == 2 then
         return "Debug this code:"
     elseif choice == 3 then
-        local question = vim.fn.input("Enter your custom question: ")
-        return question
+        return vim.fn.input("Enter your custom question: ")
     else
         print("Invalid option, defaulting to improving code.")
         return "Improve this code:"
@@ -61,7 +80,6 @@ end
 local function AskOllama()
     local code_snippet = get_visual_selection()
     local action_or_question = user_choice()
-    
     local prompt = "Code Snippet:\n" .. code_snippet .. "\n\n" .. action_or_question
     local data = vim.fn.json_encode({
         model = "code-davinci-002",
@@ -73,16 +91,7 @@ local function AskOllama()
         presence_penalty = 0.6,
         stop = {"\n"}
     })
-
-    -- Send request to API
     local response = http_post(API_URL, data)
-
-    -- Handle API response
-    if response == nil then
-        print("Failed to send request to the API.")
-        return
-    end
-
     local message = extract_message(response)
     print("API Response:\n", message)
 end
