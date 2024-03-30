@@ -117,7 +117,8 @@ local function AskOllama()
     vim.api.nvim_buf_set_lines(response_buf, 0, -1, false, formatted_response)
 
     -- Open the new buffer in a split at the bottom
-    vim.cmd('botright vsplit')
+    -- Open the new buffer in a split at the bottom
+    vim.cmd('botright vsplit new') -- Corrected command
     vim.api.nvim_buf_set_option(response_buf, 'modifiable', false)
     vim.cmd('wincmd l') -- Move focus to the new split
 end
