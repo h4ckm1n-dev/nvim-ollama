@@ -1,84 +1,98 @@
 local API_URL = "http://127.0.0.1:11434/api/generate"
+local vim = vim -- Ensure Neovim's 'vim' API is accessible
 
--- Gets text from the current visual selection in Neovim
-local function get_visual_selection()
-	local _, start_row, _, _ = unpack(vim.fn.getpos("'<"))
-	local _, end_row, _, _ = unpack(vim.fn.getpos("'>"))
-	local lines = vim.api.nvim_buf_get_lines(0, start_row - 1, end_row, true)
-	if #lines == 0 then
-		return ""
-	end
-	return table.concat(lines, "\n")
+-- Function to create a floating window for better UX
+local function create_float_window()
+    local width = vim.api.nvim_get_option("columns")
+    local height = vim.api.nvim_get_option("lines")
+
+    -- Calculate window size and position
+    local win_height = math.ceil(height * 0.2)
+    local win_width = math.ceil(width * 0.7)
+    local row = math.ceil((height - win_height) / 2)
+    local col = math.ceil((width - win_width) / 2)
+
+    -- Window buffer and options
+    local opts = {
+        style = "minimal",
+        relative = "editor",
+        width = win_width,
+        height = win_height,
+        row = row,
+        col = col
+    }
+
+    local buf = vim.api.nvim_create_buf(false, true) -- Create a buffer for the window
+    local win = vim.api.nvim_open_win(buf, true, opts) -- Open the window
+
+    return buf, win
 end
 
--- Extracts the actual message from the API response
-local function extract_message(json_response)
-	if json_response == nil then
-		print("JSON response is nil")
-		return "Error decoding response."
-	end
-	local decoded = vim.fn.json_decode(json_response)
-	if decoded == nil then
-		print("Error decoding JSON")
-		return "Error decoding response."
-	end
-	-- Assuming the message you want is in the 'response' field of the JSON
-	local message = decoded.response or "No response field found."
-	return message
+-- Function to display options in the floating window
+local function display_options_in_window(buf, options)
+    vim.api.nvim_buf_set_option(buf, 'modifiable', true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, options)
+    vim.api.nvim_buf_set_option(buf, 'modifiable', false)
 end
 
--- Function to make an HTTP POST request
-local function http_post(url, data)
-	local command = string.format("curl -X POST -H 'Content-Type: application/json' -d '%s' %s", data, url)
-	local handle = io.popen(command)
-	if handle == nil then
-		print("Failed to execute HTTP POST request")
-		return nil
-	end
-	local response = handle:read("*a")
-	handle:close()
-	return response
+-- Improved user choice function with floating window
+local function user_choice()
+    local buf, win = create_float_window()
+    local options = {"1. Improve Code", "2. Debug Code", "3. Custom Question"}
+    display_options_in_window(buf, options)
+
+    local choice = tonumber(vim.fn.input("Option (1/2/3): "))
+    vim.api.nvim_win_close(win, true) -- Close the floating window after selection
+
+    if choice == 1 then
+        return "Improve this code:"
+    elseif choice == 2 then
+        return "Debug this code:"
+    elseif choice == 3 then
+        local question = vim.fn.input("Enter your custom question: ")
+        return question
+    else
+        print("Invalid option, defaulting to improving code.")
+        return "Improve this code:"
+    end
 end
 
 -- Main function to interact with the API
 local function AskOllama()
-	local code_snippet = get_visual_selection()
-	print("Code Snippet:\n", code_snippet) -- Print the code snippet
+    local code_snippet = get_visual_selection()
+    local action_or_question = user_choice()
+    
+    local prompt = "Code Snippet:\n" .. code_snippet .. "\n\n" .. action_or_question
+    local data = vim.fn.json_encode({
+        model = "code-davinci-002",
+        prompt = prompt,
+        temperature = 0.5,
+        max_tokens = 1500,
+        top_p = 1.0,
+        frequency_penalty = 0.0,
+        presence_penalty = 0.6,
+        stop = {"\n"}
+    })
 
-	-- Prepare data for API request
-	local prompt = "Code Snippet:\n" .. code_snippet .. "\n\nWhat would you like to do?"
-	local data = {
-		model = "mixtral",
-		prompt = prompt,
-		stream = false,
-		max_tokens = 1000,
-		temperature = 0.5,
-		top_p = 1.0,
-		frequency_penalty = 0.8,
-		presence_penalty = 0.0,
-		stop = "\n",
-	}
-	local encoded_data = vim.fn.json_encode(data)
+    -- Send request to API
+    local response = http_post(API_URL, data)
 
-	-- Send request to API
-	local response = http_post(API_URL, encoded_data)
+    -- Handle API response
+    if response == nil then
+        print("Failed to send request to the API.")
+        return
+    end
 
-	-- Handle API response
-	if response == nil then
-		print("Failed to send debugging request.")
-		return
-	end
-
-	local message = extract_message(response)
-	print("API Response: " .. message)
+    local message = extract_message(response)
+    print("API Response:\n", message)
 end
 
 -- Setup function for lazy.nvim
 local function setup()
-	vim.api.nvim_create_user_command("AskOllama", AskOllama, {})
+    vim.api.nvim_create_user_command("AskOllama", AskOllama, {})
 end
 
 return {
-	AskOllama = AskOllama,
-	setup = setup,
+    AskOllama = AskOllama,
+    setup = setup,
 }
