@@ -77,6 +77,7 @@ local function user_choice()
         print("Invalid option, defaulting to improving code.")
         return "Improve this code:"
     end
+
 -- Main function to interact with the API
 local function AskOllama()
     local code_snippet = get_visual_selection()
@@ -104,7 +105,9 @@ local function AskOllama()
         local message = decoded_response.response or "No response found."
         table.insert(formatted_response, "API Response:")
         table.insert(formatted_response, "-----------------------")
-        table.insert(formatted_response, message)
+        for line in message:gmatch("[^\r\n]+") do
+            table.insert(formatted_response, line)
+        end
         table.insert(formatted_response, "")
     end
     
@@ -116,6 +119,7 @@ local function AskOllama()
     vim.api.nvim_buf_set_option(response_buf, 'modifiable', false)
     vim.cmd('wincmd l') -- Move focus to the new split
 end
+
 
 
 
