@@ -36,24 +36,6 @@ local function http_post(url, data)
     return response
 end
 
--- Function to format and display the response in a new buffer at the bottom
-local function format_and_display_response(response)
-    vim.cmd('botright new') -- Create a new split at the bottom
-    vim.api.nvim_win_set_height(0, 10) -- Adjust the height as needed
-
-    local buf = vim.api.nvim_win_get_buf(0)
-    vim.api.nvim_buf_set_option(buf, 'modifiable', true)
-    vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
-    
-    -- Splitting the response into lines
-    local lines = {}
-    for line in response:gmatch("([^\n]*)\n?") do
-        table.insert(lines, line)
-    end
-    vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-    vim.api.nvim_buf_set_option(buf, 'modifiable', false)
-end
-
 -- Main function to ask the user for a question, get clipboard content, and send to API
 local function AskOllama()
     local code_snippet = get_clipboard_content()
@@ -73,7 +55,7 @@ local function AskOllama()
         stop = {"\n"}
     })
     local response = http_post(API_URL, data)
-    format_and_display_response(response) -- Display the response at the bottom
+    print(response) -- Handle the response appropriately, maybe display it in a floating window or a new buffer
 end
 
 -- Function to set up the user command
