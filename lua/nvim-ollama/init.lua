@@ -47,13 +47,16 @@ local function extract_message(json_response)
         print("Error decoding JSON")
         return "Error decoding response."
     end
-    local message = decoded.response or "No response field found."
+    local message = decoded.choices[1].text or "No response field found."
     return message
 end
 
 -- Sends a POST request to the specified API
 local function http_post(url, data)
-    local response = vim.fn.system("curl -s -X POST -H 'Content-Type: application/json' -d '" .. data .. "' " .. url)
+    local cmd = string.format("curl -s -X POST -H 'Content-Type: application/json' -d '%s' %s", data, url)
+    local handle = io.popen(cmd)
+    local response = handle:read("*a")
+    handle:close()
     return response
 end
 
@@ -82,7 +85,6 @@ local function AskOllama()
     local action_or_question = user_choice()
     local prompt = "Code Snippet:\n" .. code_snippet .. "\n\n" .. action_or_question
     local data = vim.fn.json_encode({
-        model = "mixtral",
         prompt = prompt,
         temperature = 0.5,
         max_tokens = 1500,
