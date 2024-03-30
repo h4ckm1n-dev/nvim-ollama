@@ -23,9 +23,35 @@ local function display_options_in_window(buf, options)
 end
 
 local function get_visual_selection()
-    local start_row, end_row = vim.fn.getpos("'<")[2], vim.fn.getpos("'>")[2]
-    return table.concat(vim.api.nvim_buf_get_lines(0, start_row - 1, end_row, true), "\n")
+    -- Use `vim.fn.getpos` to get the start and end positions of the visual selection
+    local start_pos = vim.fn.getpos("'<")
+    local end_pos = vim.fn.getpos("'>")
+
+    -- Adjust for Lua 1-based indexing and end line exclusive behavior of `nvim_buf_get_lines`
+    local start_line, start_col = start_pos[2], start_pos[3]
+    local end_line, end_col = end_pos[2], end_pos[4]
+
+    if start_line == 0 or end_line == 0 then
+        print("No selection found.")
+        return ""
+    end
+
+    -- Fetch the lines from the buffer
+    local lines = vim.api.nvim_buf_get_lines(0, start_line - 1, end_line, false)
+
+    -- Handle single-line selections separately to include selected columns only
+    if start_line == end_line then
+        return lines[1]:sub(start_col, end_col)
+    else
+        -- Adjust the first and last lines based on the column selection
+        lines[1] = lines[1]:sub(start_col)
+        lines[#lines] = lines[#lines]:sub(1, end_col)
+    end
+
+    -- Concatenate the lines to form the full selected text
+    return table.concat(lines, "\n")
 end
+
 
 local function extract_message(json_response)
     local decoded = vim.fn.json_decode(json_response)
