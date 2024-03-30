@@ -1,3 +1,4 @@
+-- Define the API URL
 local API_URL = "http://127.0.0.1:11434/api/generate"
 
 -- Ensure Neovim's 'vim' API is accessible
@@ -77,6 +78,7 @@ local function user_choice()
         print("Invalid option, defaulting to improving code.")
         return "Improve this code:"
     end
+end
 
 -- Main function to interact with the API
 local function AskOllama()
@@ -114,13 +116,11 @@ local function AskOllama()
     -- Set the lines in the new buffer
     vim.api.nvim_buf_set_lines(response_buf, 0, -1, false, formatted_response)
 
-    -- Open the new buffer in a split
+    -- Open the new buffer in a split at the bottom
     vim.cmd('botright vsplit')
     vim.api.nvim_buf_set_option(response_buf, 'modifiable', false)
     vim.cmd('wincmd l') -- Move focus to the new split
 end
-
-
 
 
 -- Setup function for lazy.nvim
