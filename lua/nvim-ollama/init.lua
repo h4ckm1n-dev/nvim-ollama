@@ -45,8 +45,8 @@ local function format_and_display_response(response)
     local markdown_output = "```\n" -- Start Markdown code block
 
     -- Iterate over JSON fields and format them as Markdown
-    for key, value in pairs(json_response) do
-        markdown_output = markdown_output .. key .. ": " .. value .. "\n"
+    for _, entry in ipairs(json_response) do
+        markdown_output = markdown_output .. entry.response .. " "
     end
 
     markdown_output = markdown_output .. "```" -- End Markdown code block
