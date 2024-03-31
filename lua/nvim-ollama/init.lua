@@ -26,29 +26,34 @@ local function http_post(url, data)
 end
 
 local function format_and_display_response(response)
-	vim.cmd("botright vnew")
-	local width = math.floor(vim.api.nvim_get_option("columns") * 0.3)
-	vim.api.nvim_win_set_width(0, width)
+    vim.cmd('botright vnew')
+    local width = math.floor(vim.api.nvim_get_option("columns") * 0.3)
+    vim.api.nvim_win_set_width(0, width)
 
-	local buf = vim.api.nvim_get_current_buf()
-	vim.api.nvim_buf_set_option(buf, "modifiable", true)
-	vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
+    local buf = vim.api.nvim_get_current_buf()
+    vim.api.nvim_buf_set_option(buf, 'modifiable', true)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
 
-	local full_response = {}
+    local full_response = {}
 
-	for line in response:gmatch("[^\r\n]+") do
-		local json_response = vim.fn.json_decode(line)
-		if json_response and json_response.response then
-			table.insert(full_response, json_response.response)
-		else
-			print("Invalid or empty JSON response.")
-			return -- Early return if response is invalid
-		end
-	end
+    for line in response:gmatch("[^\r\n]+") do
+        local json_response = vim.fn.json_decode(line)
+        if json_response and json_response.response then
+            -- If the response contains newlines, split it into separate lines
+            for _, split_line in ipairs(vim.split(json_response.response, "\n")) do
+                table.insert(full_response, split_line)
+            end
+        else
+            print("Invalid or empty JSON response.")
+            return -- Early return if response is invalid
+        end
+    end
 
-	vim.api.nvim_buf_set_lines(buf, 0, -1, false, full_response)
-	vim.api.nvim_buf_set_option(buf, "modifiable", false)
+    -- Set the collected response parts to the buffer, ensuring no line contains newlines
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, full_response)
+    vim.api.nvim_buf_set_option(buf, 'modifiable', false)
 end
+
 
 local function AskOllama()
 	local code_snippet = get_clipboard_content()
