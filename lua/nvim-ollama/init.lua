@@ -1,4 +1,5 @@
-local API_URL = "http://127.0.0.1:11434/api/generate"
+local vim = require('vim')
+local io = require('io')
 
 local function get_clipboard_content()
     local clipboard_content = vim.fn.getreg("+")
