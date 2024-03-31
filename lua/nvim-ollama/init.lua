@@ -26,9 +26,10 @@ local function http_post(url, data)
 end
 
 local function format_and_display_response(response)
-    vim.cmd('botright vnew')
-    local width = math.floor(vim.api.nvim_get_option("columns") * 0.3)
-    vim.api.nvim_win_set_width(0, width)
+    -- Open a new horizontal split at the bottom
+    vim.cmd('botright new')
+    local height = math.floor(vim.api.nvim_get_option("lines") * 0.3) -- Use 30% of the total lines
+    vim.api.nvim_win_set_height(0, height)
 
     local buf = vim.api.nvim_get_current_buf()
     vim.api.nvim_buf_set_option(buf, 'modifiable', true)
@@ -37,7 +38,6 @@ local function format_and_display_response(response)
     local full_text = ""
     local all_done = false
 
-    -- Concatenate the response parts correctly
     for line in response:gmatch("[^\r\n]+") do
         local json_response = vim.fn.json_decode(line)
         if json_response and json_response.response then
@@ -59,8 +59,6 @@ local function format_and_display_response(response)
         return
     end
 
-    -- Now full_text contains the entire formatted response
-    -- Split it into lines for display in Neovim buffer
     local response_lines = vim.split(full_text, "\n", true)
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, response_lines)
     vim.api.nvim_buf_set_option(buf, 'modifiable', false)
