@@ -27,7 +27,7 @@ end
 
 local function format_and_display_response(response)
     -- Open a new horizontal split at the bottom
-    vim.cmd('split')
+    vim.cmd('botright split')
     local height = math.floor(vim.api.nvim_get_option("lines") * 0.3) -- Use 30% of the total lines
     vim.api.nvim_win_set_height(0, height)
 
