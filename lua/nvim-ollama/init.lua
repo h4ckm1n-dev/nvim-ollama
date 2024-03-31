@@ -37,11 +37,9 @@ local function format_and_display_response(response)
     local full_text = ""
     local all_done = false
 
-    -- Concatenate the response parts correctly
     for line in response:gmatch("[^\r\n]+") do
         local json_response = vim.fn.json_decode(line)
         if json_response and json_response.response then
-            -- Check if the fragment ends with a punctuation mark before adding a space
             if full_text:match("[%.%,%;%:%?!]$") or json_response.response == "" then
                 full_text = full_text .. json_response.response
             else
@@ -50,7 +48,7 @@ local function format_and_display_response(response)
         end
         if json_response and json_response.done then
             all_done = json_response.done
-            break -- Stop processing once the final part of the response is received
+            break
         end
     end
 
@@ -59,23 +57,7 @@ local function format_and_display_response(response)
         return
     end
 
-    -- Now full_text contains the entire formatted response
-    -- Split it into lines for display in Neovim buffer
     local response_lines = vim.split(full_text, "\n", true)
-    vim.api.nvim_buf_set_lines(buf, 0, -1, false, response_lines)
-    vim.api.nvim_buf_set_option(buf, 'modifiable', false)
-end
-
-    if not all_done then
-        print("Response not fully received.")
-        return
-    end
-
-    -- Combine all response parts into a single string, as they might have been split
-    local combined_response = table.concat(full_response, "\n")
-
-    -- Split the combined response into lines to properly display in the buffer
-    local response_lines = vim.split(combined_response, "\n")
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, response_lines)
     vim.api.nvim_buf_set_option(buf, 'modifiable', false)
 end
