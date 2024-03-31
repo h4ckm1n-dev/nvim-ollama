@@ -27,7 +27,7 @@ end
 
 local function format_and_display_response(response)
     -- Open a new horizontal split at the bottom
-    vim.cmd('split')
+    vim.cmd('botright split')
     local height = math.floor(vim.api.nvim_get_option("lines") * 0.3) -- Use 30% of the total lines
     vim.api.nvim_win_set_height(0, height)
 
@@ -35,32 +35,27 @@ local function format_and_display_response(response)
     vim.api.nvim_buf_set_option(buf, 'modifiable', true)
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
 
-    local full_text = ""
-    local all_done = false
+    -- Remove trailing characters from the API response
+    response = string.sub(response, 1, string.len(response) - 1)
 
-    for line in response:gmatch("[^\r\n]+") do
-        local json_response = vim.fn.json_decode(line)
-        if json_response and json_response.response then
-            -- Check if the fragment ends with a punctuation mark before adding a space
-            if full_text:match("[%.%,%;%:%?!]$") or json_response.response == "" then
-                full_text = full_text .. json_response.response
-            else
-                full_text = full_text .. (full_text ~= "" and " " or "") .. json_response.response
-            end
-        end
-        if json_response and json_response.done then
-            all_done = json_response.done
-            break -- Stop processing once the final part of the response is received
-        end
-    end
-
-    if not all_done then
-        print("Response not fully received or missing 'done' confirmation.")
+    -- Convert JSON response to Lua table
+    local json_response = vim.fn.json_decode(response)
+    if not json_response then
+        print("Failed to decode JSON response.")
         return
     end
 
-    local response_lines = vim.split(full_text, "\n", true)
-    vim.api.nvim_buf_set_lines(buf, 0, -1, false, response_lines)
+    local markdown_output = "```\n" -- Start Markdown code block
+
+    -- Iterate over JSON fields and format them as Markdown
+    for _, entry in ipairs(json_response) do
+        markdown_output = markdown_output .. entry.response .. " "
+    end
+
+    markdown_output = markdown_output .. "```" -- End Markdown code block
+
+    -- Set Markdown content in the buffer
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, {markdown_output})
     vim.api.nvim_buf_set_option(buf, 'modifiable', false)
 end
 
